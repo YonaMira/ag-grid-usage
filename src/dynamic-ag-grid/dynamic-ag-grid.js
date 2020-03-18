@@ -131,7 +131,7 @@ export class DynamicAgGrid extends Component {
                     {this.state.showEmptyColumnsInCurrentGridFlag ? "Hide empty columns in this table" : "Show empty columns in this table"}
                 </button>
                 {/*TODO: It's possible to change this class for using another grid theme.*/}
-                <div className="ag-theme-balham" style={ {height: '700px', width: '800px'} }>
+                <div className="ag-theme-balham dynamic-grid">
                     <AgGridReact
                         columnDefs={this.state.columnDefs}
                         rowData={this.state.rowData}
