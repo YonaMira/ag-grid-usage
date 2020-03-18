@@ -1,11 +1,27 @@
-import React from 'react';
+import React, {Component} from 'react';
 import {DynamicAgGrid} from './dynamic-ag-grid/dynamic-ag-grid';
 import './App.css';
 
-function App() {
-  return (
-    <DynamicAgGrid/>
-  );
+export class App extends Component {
+  constructor(params) {
+    super(params);
+    this.state = {
+      emptyColumnsVisible: true
+    }
+  }
+
+  render() {
+    return (
+        <div>
+          <button type="button" onClick={() => {
+            this.setState({emptyColumnsVisible: !this.state.emptyColumnsVisible});
+          }}>{this.state.emptyColumnsVisible ? "Hide empty columns in all tables" : "Show empty columns in all tables"}</button>
+          <DynamicAgGrid
+            showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
+          />
+        </div>
+    );
+  }
 }
 
 export default App;

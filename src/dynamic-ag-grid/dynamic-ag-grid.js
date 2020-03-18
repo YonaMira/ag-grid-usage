@@ -24,17 +24,32 @@ export class DynamicAgGrid extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            showEmptyColumnsInCurrentGridFlag: props.showEmptyColumnsInAllGridsFlag,
+            showEmptyColumnsInAllGridsFlag: props.showEmptyColumnsInAllGridsFlag,
             columnDefs: [
+                { headerName: "EmptyColumn1", field: "empty1" },
                 { headerName: "Make", field: "make" },
                 { headerName: "Model", field: "model" },
+                { headerName: "EmptyColumn2", field: "empty2" },
                 { headerName: "Price", field: "price" }],
             rowData: [
                 { make: "Toyota",
                     model: "Efficient honorificabilitudinitatibus cross-media information without floccinaucinihilipilification cross-media value. Quickly maximize timely deliverables for real-time schemas plenipotentiary.",
                     price: 35000,
                     cellStyle: {'white-space': 'normal'}},
-                { make: "Ford", model: '<em class="hlt">Mon</em>deo', price: 32000},
-                { make: "Porsche", model: "Boxter", price: 72000 }]
+                { make: "Ford", model: '<em class="hlt">Mon</em>deo', empty2:"", price: 32000},
+                { make: "Porsche", model: "Boxter", empty2:"", price: 72000 }
+                ],
+            emptyColumnsList: []
+        }
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (this.props.showEmptyColumnsInAllGridsFlag !== nextProps.showEmptyColumnsInAllGridsFlag) {
+            this.setState({
+                showEmptyColumnsInAllGridsFlag: nextProps.showEmptyColumnsInAllGridsFlag
+            });
+            this.changeEmptyColumnsVisibility(nextProps.showEmptyColumnsInAllGridsFlag);
         }
     }
 
@@ -46,6 +61,7 @@ export class DynamicAgGrid extends Component {
         this.gridApi.sizeColumnsToFit();
         // this.columnApi.autoSizeColumns([[0, 1, 2]]);
         // this.autoSizeAll(false);
+        this.updateEmptyColumnsList();
     };
 
     changeColumnVisibility(columnName, visible) {
@@ -74,79 +90,118 @@ export class DynamicAgGrid extends Component {
         return 100;//params.data.rowHeight;
     }
 
+    switchEmptyColumnsVisibility = () => {
+        this.changeEmptyColumnsVisibility(!this.state.showEmptyColumnsInCurrentGridFlag);
+    };
+
+    changeEmptyColumnsVisibility(isVisible) {
+        if(this.state.showEmptyColumnsInCurrentGridFlag !== isVisible) {
+            this.setState({showEmptyColumnsInCurrentGridFlag: isVisible});
+            if (this.state.emptyColumnsList.length){
+                this.state.emptyColumnsList.forEach(column => {
+                    this.changeColumnVisibility(column, isVisible);
+                });
+            }
+        }
+    }
+
+    //TODO: Call this meghod after each data scrolling and after first grid initialization
+    updateEmptyColumnsList = () => {
+        const emptyColumnsCandidates = this.state.columnDefs.map(col => col.field);
+        this.state.rowData.forEach(row => {
+            if(emptyColumnsCandidates.length > 0) {
+                const rowFields = Object.keys(row);
+                rowFields.forEach(field => {
+                    if (row[field] || row[field] === 0) {
+                        const fieldIndex = emptyColumnsCandidates.indexOf(field);
+                        if(fieldIndex > -1) {
+                            emptyColumnsCandidates.splice(fieldIndex, 1);
+                        }
+                    }
+                })
+            }
+        });
+        this.setState({emptyColumnsList: emptyColumnsCandidates});
+    };
+
     render() {
         return (
-            //TODO: It's possible to change this class for using another grid theme.
-            <div className="ag-theme-balham" style={ {height: '700px', width: '800px'} }>
-                <AgGridReact
-                    columnDefs={this.state.columnDefs}
-                    rowData={this.state.rowData}
-                    onGridReady={this.onGridReady.bind(this)}
-                    rowDataChangeDetectionStrategy='IdentityCheck'
-                    enableColResize={true}
-                    enableSorting={true}
-                    enableFilter={true}
-                    enableRangeSelection={true}
-                    suppressRowClickSelection={true}
-                    animateRows={true}
-                    // onModelUpdated: modelUpdated,
-                    debug={true}
-                    autoSizeColumns={true}
-                    // rowHeight={100}
-                    getRowHeight={this.getRowHeight}
-                    // default ColDef, gets applied to every column
-                    defaultColDef= {{
-                        cellClass: "cell-wrap",
-                        // set the default column width
-                        // width: 50,
-                        // make every column editable
-                        editable: false,
-                        // sortable: true,
-                        resizable: true,
-                        skipHeaderOnAutoSize: true,
+            <div>
+                <button type="button" onClick={this.switchEmptyColumnsVisibility}>
+                    {this.state.showEmptyColumnsInCurrentGridFlag ? "Hide empty columns in this table" : "Show empty columns in this table"}
+                </button>
+                {/*TODO: It's possible to change this class for using another grid theme.*/}
+                <div className="ag-theme-balham" style={ {height: '700px', width: '800px'} }>
+                    <AgGridReact
+                        columnDefs={this.state.columnDefs}
+                        rowData={this.state.rowData}
+                        onGridReady={this.onGridReady.bind(this)}
+                        rowDataChangeDetectionStrategy='IdentityCheck'
+                        enableColResize={true}
+                        enableSorting={true}
+                        enableFilter={true}
+                        enableRangeSelection={true}
+                        suppressRowClickSelection={true}
+                        animateRows={true}
+                        // onModelUpdated: modelUpdated,
+                        debug={true}
+                        autoSizeColumns={true}
+                        // rowHeight={100}
+                        getRowHeight={this.getRowHeight}
+                        // default ColDef, gets applied to every column
+                        defaultColDef= {{
+                            cellClass: "cell-wrap",
+                            // set the default column width
+                            // width: 50,
+                            // make every column editable
+                            editable: false,
+                            // sortable: true,
+                            resizable: true,
+                            skipHeaderOnAutoSize: true,
 
 
-                        // make every column use 'text' filter by default
-                        filter: 'agTextColumnFilter',
-                        cellEditor: 'agLargeTextCellEditor',
-                        // cellEditorParams: {
-                        //     values: ['English', 'Spanish', 'French', 'Portuguese', '(other)']
-                        // },
-                        cellRendererFramework: ScrollingCellRenderer,
-                        loadingOverlayRendererFramework: agLoadingOverlayOverride,// TODO: It is possible to set Circular component here.
-                        noRowsOverlayRendererFramework: agNoRowsOverlayOverride,
-                        // headerComponentFramework: agColumnHeaderOverride // This override is checked - it working and can be used.
-                        // headerComponentFramework: SortableHeaderComponent,
-                        // headerComponentParams: {
-                        //    menuIcon: 'fa-bars'
-                        // }
-                        // setting grid wide date component
-                        // dateComponentFramework={DateComponent}
-                    }}
-                floatingFilter= {true}
-                // rowModelType = 'infinite'
-                // datasource: InfiniteScrollingDatasource
+                            // make every column use 'text' filter by default
+                            filter: 'agTextColumnFilter',
+                            cellEditor: 'agLargeTextCellEditor',
+                            // cellEditorParams: {
+                            //     values: ['English', 'Spanish', 'French', 'Portuguese', '(other)']
+                            // },
+                            cellRendererFramework: ScrollingCellRenderer,
+                            loadingOverlayRendererFramework: agLoadingOverlayOverride,// TODO: It is possible to set Circular component here.
+                            noRowsOverlayRendererFramework: agNoRowsOverlayOverride,
+                            // headerComponentFramework: agColumnHeaderOverride // This override is checked - it working and can be used.
+                            // headerComponentFramework: SortableHeaderComponent,
+                            // headerComponentParams: {
+                            //    menuIcon: 'fa-bars'
+                            // }
+                            // setting grid wide date component
+                            // dateComponentFramework={DateComponent}
+                        }}
+                    floatingFilter= {true}
+                    // rowModelType = 'infinite'
+                    // datasource: InfiniteScrollingDatasource
 
-                // define specific column types
-                columnTypes={
-                    {
-                        numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
-                        medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
-                        nonEditableColumn: {editable: false},
-                        dateColumn: {
-                            // specify we want to use the date filter
-                            filter: 'agDateColumnFilter',
-                            // add extra parameters for the date filter
-                            filterParams: {
-                                // provide comparator function
-                                comparator:compareDates.bind(this)
+                    // define specific column types
+                    columnTypes={
+                        {
+                            numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
+                            medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
+                            nonEditableColumn: {editable: false},
+                            dateColumn: {
+                                // specify we want to use the date filter
+                                filter: 'agDateColumnFilter',
+                                // add extra parameters for the date filter
+                                filterParams: {
+                                    // provide comparator function
+                                    comparator:compareDates.bind(this)
+                                }
                             }
                         }
                     }
-                }
-                onColumnResized={this.onColumnResized.bind(this)}
-                >
-                </AgGridReact>
+                    onColumnResized={this.onColumnResized.bind(this)}
+                    >
+                    </AgGridReact>
+                </div>
             </div>
         );
     }
