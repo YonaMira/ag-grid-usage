@@ -1,0 +1,55 @@
+/*::-webkit-scrollbar addresses the background of the bar itself. It is usually covered by the other elements*/
+/*::-webkit-scrollbar-button addresses the directional buttons on the scrollbar*/
+/*::-webkit-scrollbar-track addresses the empty space “below” the progress bar*/
+/*::-webkit-scrollbar-track-piece is the top-most layer of the the progress bar not covered by the draggable scrolling element (thumb)*/
+/*::-webkit-scrollbar-thumb addresses the draggable scrolling element that resizes depending on the size of the scrollable element*/
+/*::-webkit-scrollbar-corner addresses the (usually) bottom corner of the scrollable element, where two scrollbars might meet*/
+/*::-webkit-resizer addresses the draggable resizing handle that appears above the scrollbar-corner at the bottom corner of some elements*/
+textarea.scrolling-cell {
+    padding: 2px;
+    text-align: justify;
+    overflow: auto;
+    height: 98px;
+    width: 100%;
+    resize: none;
+    border: none;
+    background-color: transparent;
+}
+
+div.scrolling-cell{
+    height: 98px;
+    width: 100%;
+    overflow: auto;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    text-align: justify;
+    padding: 2px;
+    background-color: transparent;
+}
+
+/* Scrollbar styles */
+.scrolling-cell::-webkit-scrollbar {
+    width: 8px;
+    height: 100%;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 5px;
+}
+
+.scrolling-cell::-webkit-scrollbar-track {
+    border: 1px solid #61dafb;
+    border-radius: 10px;
+}
+
+.scrolling-cell::-webkit-scrollbar-thumb {
+    background: deepskyblue;
+    border-radius: 10px;
+}
+
+.scrolling-cell::-webkit-scrollbar-thumb:hover {
+    background: dodgerblue;
+}
+
+.hlt {
+    background-color: yellow;
+}

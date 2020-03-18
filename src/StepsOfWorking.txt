@@ -1,2 +1,35 @@
-npm install react-scroll-box
+1. Cell renderer
 
+a) height must be synchronized with height which is return by getRowHeight() method of grid - 2px;
+.scrolling-cell {
+    padding: 2px;
+    text-align: justify;
+    overflow: auto;
+    height: 98px;
+    width: 100%;
+    resize: none;
+    size: inherit;
+    border: none;
+}
+
+getRowHeight(params) {
+    return 100;//params.data.rowHeight;
+}
+
+b) If you use div element instead of textarea, use this css style:
+   div.scroll{
+       height: 98px;
+       width: 100%;
+       overflow: auto;
+       word-wrap: break-word;
+       white-space: pre-wrap;
+       text-align: justify;
+       padding: 2px;
+       background-color: transparent;
+   }
+   Important:
+   word-wrap: break-word;
+   white-space: pre-wrap;
+c) To get mark of highlightings it's necessary to set cell value as innerHtml instead of string.
+For this use the following syntax:
+<div className="scrolling-cell" dangerouslySetInnerHTML={{__html: this.props.value}}/>
