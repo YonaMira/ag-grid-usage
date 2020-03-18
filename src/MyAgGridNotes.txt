@@ -1,0 +1,6 @@
+1. https://www.ag-grid.com/javascript-grid-themes-provided/
+This is the most important documentation for grid visualization customization.
+The minimal set of properties you need to set to ensure correct functioning are:
+rowHeight,
+headerHeight and
+minColWidth.
