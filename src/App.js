@@ -19,6 +19,9 @@ export class App extends Component {
           <DynamicAgGrid
             showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
           />
+          <DynamicAgGrid
+              showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
+          />
         </div>
     );
   }
