@@ -26,20 +26,7 @@ export class DynamicAgGrid extends Component {
         this.state = {
             showEmptyColumnsInCurrentGridFlag: props.showEmptyColumnsInAllGridsFlag,
             showEmptyColumnsInAllGridsFlag: props.showEmptyColumnsInAllGridsFlag,
-            columnDefs: [
-                { headerName: "EmptyColumn1", field: "empty1" },
-                { headerName: "Make", field: "make" },
-                { headerName: "Model", field: "model" },
-                { headerName: "EmptyColumn2", field: "empty2" },
-                { headerName: "Price", field: "price" }],
-            rowData: [
-                { make: "Toyota",
-                    model: "Efficient honorificabilitudinitatibus cross-media information without floccinaucinihilipilification cross-media value. Quickly maximize timely deliverables for real-time schemas plenipotentiary.",
-                    price: 35000,
-                    cellStyle: {'white-space': 'normal'}},
-                { make: "Ford", model: '<em class="hlt">Mon</em>deo', empty2:"", price: 32000},
-                { make: "Porsche", model: "Boxter", empty2:"", price: 72000 }
-                ],
+            columnDefs: [],
             emptyColumnsList: []
         }
     }
@@ -56,8 +43,34 @@ export class DynamicAgGrid extends Component {
     onGridReady = (params) => {
         this.gridApi = params.api;
         this.columnApi = params.columnApi;
-        // this.gridApi.setDatasource(InfiniteScrollingDatasource);
+        this.initializeGridWithData();
+    };
 
+    initializeGridWithData = () => {
+        const httpRequest = new XMLHttpRequest();
+        httpRequest.open(
+            'GET',
+            'https://raw.githubusercontent.com/ag-grid/ag-grid/master/grid-packages/ag-grid-docs/src/olympicWinners.json'
+        );
+        httpRequest.send();
+        httpRequest.onreadystatechange = () => {
+            if (httpRequest.readyState === 4 && httpRequest.status === 200) {
+                this.updateDatasource(JSON.parse(httpRequest.responseText));
+            }
+        };
+    };
+
+    initColumnsByData(data) {
+        if(data && data.length) {
+            const firstRow = data[0];
+            this.setState({columnDefs: Object.keys(firstRow).map(column => { return {headerName: column, field: column}})});
+        }
+    }
+
+    updateDatasource = (data) => {
+        this.initColumnsByData(data);
+        const datasource = new InfiniteScrollingDatasource(this.props.tableName, data);
+        this.gridApi.setDatasource(datasource);
         this.gridApi.sizeColumnsToFit();
         // this.columnApi.autoSizeColumns([[0, 1, 2]]);
         // this.autoSizeAll(false);
@@ -108,8 +121,10 @@ export class DynamicAgGrid extends Component {
     //TODO: Call this meghod after each data scrolling and after first grid initialization
     updateEmptyColumnsList = () => {
         const emptyColumnsCandidates = this.state.columnDefs.map(col => col.field);
-        this.state.rowData.forEach(row => {
+        // this.state.rowData.forEach(row => {
+        this.gridApi.forEachNodeAfterFilter((node, index) => {
             if(emptyColumnsCandidates.length > 0) {
+                const row = node.data;
                 const rowFields = Object.keys(row);
                 rowFields.forEach(field => {
                     if (row[field] || row[field] === 0) {
@@ -134,7 +149,7 @@ export class DynamicAgGrid extends Component {
                 <div className="ag-theme-balham dynamic-grid">
                     <AgGridReact
                         columnDefs={this.state.columnDefs}
-                        rowData={this.state.rowData}
+                        // rowData={this.state.rowData}
                         onGridReady={this.onGridReady.bind(this)}
                         rowDataChangeDetectionStrategy='IdentityCheck'
                         enableColResize={true}
@@ -177,28 +192,50 @@ export class DynamicAgGrid extends Component {
                             // setting grid wide date component
                             // dateComponentFramework={DateComponent}
                         }}
-                    floatingFilter= {true}
-                    // rowModelType = 'infinite'
-                    // datasource: InfiniteScrollingDatasource
+                        floatingFilter = {true}
+                        //Infinit scrolling data source related properties
+                        datasource = {InfiniteScrollingDatasource}
+                            // tell grid we want virtual row model type
+                        rowModelType = 'infinite'
+                        pagination = {true}
+                        paginationAutoPageSize = {true}
+                        // how big each page in our page cache will be, default is 100
+                        paginationPageSize = {100}
+                        // how many extra blank rows to display to the user at the end of the dataset,
+                        // which sets the vertical scroll and then allows the grid to request viewing more rows of data.
+                        // default is 1, ie show 1 row.
+                        cacheOverflowSize = {2}
+                        // how many server side requests to send at a time. if user is scrolling lots, then the requests
+                        // are throttled down
+                        maxConcurrentDatasourceRequests = {1}
+                        // how many rows to initially show in the grid. having 1 shows a blank row, so it looks like
+                        // the grid is loading from the users perspective (as we have a spinner in the first col)
+                        infiniteInitialRowCount = {1000}
+                        // how many pages to store in cache. default is undefined, which allows an infinite sized cache,
+                        // pages are never purged. this should be set for large data to stop your browser from getting
+                        // full of data
+                        maxBlocksInCache = {10}
+                        enableServerSideFilter = {false}
+                        enableServerSideSorting = {false}
 
-                    // define specific column types
-                    columnTypes={
-                        {
-                            numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
-                            medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
-                            nonEditableColumn: {editable: false},
-                            dateColumn: {
-                                // specify we want to use the date filter
-                                filter: 'agDateColumnFilter',
-                                // add extra parameters for the date filter
-                                filterParams: {
-                                    // provide comparator function
-                                    comparator:compareDates.bind(this)
+                        // define specific column types
+                        columnTypes = {
+                            {
+                                numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
+                                medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
+                                nonEditableColumn: {editable: false},
+                                dateColumn: {
+                                    // specify we want to use the date filter
+                                    filter: 'agDateColumnFilter',
+                                    // add extra parameters for the date filter
+                                    filterParams: {
+                                        // provide comparator function
+                                        comparator:compareDates.bind(this)
+                                    }
                                 }
                             }
                         }
-                    }
-                    onColumnResized={this.onColumnResized.bind(this)}
+                        onColumnResized={this.onColumnResized.bind(this)}
                     >
                     </AgGridReact>
                 </div>

@@ -18,9 +18,11 @@ export class App extends Component {
           }}>{this.state.emptyColumnsVisible ? "Hide empty columns in all tables" : "Show empty columns in all tables"}</button>
           <DynamicAgGrid
             showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
+            tableName={'Test1'}
           />
           <DynamicAgGrid
               showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
+              tableName={'Test2'}
           />
         </div>
     );

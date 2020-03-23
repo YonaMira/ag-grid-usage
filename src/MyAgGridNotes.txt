@@ -8,11 +8,6 @@ minColWidth.
 
 
 GIT COMMANDS
-git commit -m "Commit_message"
+git commit -a -m "Commit_message"
 git status
-If you want to get list of changed files:
-
-git diff-tree --no-commit-id --name-only -r <commit-ish>
-If you want to get list of all files in a commit, you can use
-
-git ls-tree --name-only -r <commit-ish>
+git push origin master
