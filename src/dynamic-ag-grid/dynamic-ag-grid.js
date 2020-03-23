@@ -3,7 +3,6 @@ import {Component} from "react";
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/dist/styles/ag-grid.css';
 import {InfiniteScrollingDatasource} from './data-source-engine/infinite-scrolling-datasource';
-import {ScrollBox, ScrollAxes, FastTrack} from 'react-scroll-box'; // ES6
 
 //ag-Grid themes
 import 'ag-grid-enterprise/dist/styles/ag-theme-material.css';
