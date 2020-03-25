@@ -2,7 +2,8 @@ import React from 'react';
 import {Component} from "react";
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/dist/styles/ag-grid.css';
-import {InfiniteScrollingDatasource} from './data-source-engine/infinite-scrolling-datasource';
+import {ServerSideDatasource} from './data-source-engine/server-side-datasource';
+import {GridTitleRenderer} from './grid-elements-renderers/column-headers-renderers/grid-title-renderer/grid-title-column-renderer';
 
 //ag-Grid themes
 import 'ag-grid-enterprise/dist/styles/ag-theme-material.css';
@@ -11,23 +12,25 @@ import 'ag-grid-enterprise/dist/styles/ag-theme-balham.css';
 
 import 'ag-grid-enterprise';
 import {compareDates} from './ag-grid-utils/comparators/date-comparator';
-import {ScrollingCellRenderer} from './cell-renderers/scrolling-cell-renderer';
+import {ScrollingCellRenderer} from './grid-elements-renderers/cell-renderers/scrolling-cell-renderer/scrolling-cell-renderer';
 // do not delete this import - this is overriding of framework component.
 import {agLoadingOverlayOverride} from './overriden-ag-components/agLoadingOverlayComponent';
 // do not delete this import - this is overriding of framework component.
 import {agNoRowsOverlayOverride} from './overriden-ag-components/agNoRowsOverlayComponent';
 import {agColumnHeaderOverride} from './overriden-ag-components/agColumnHeaderComponent';
 import './dynamic-ag-grid.css';
+import {ServerDataReceiver} from "./data-source-engine/server-data-reciever";
 
 export class DynamicAgGrid extends Component {
     constructor(props) {
         super(props);
         this.state = {
             showEmptyColumnsInCurrentGridFlag: props.showEmptyColumnsInAllGridsFlag,
-            showEmptyColumnsInAllGridsFlag: props.showEmptyColumnsInAllGridsFlag,
-            columnDefs: [],
-            emptyColumnsList: []
-        }
+            showEmptyColumnsInAllGridsFlag: props.showEmptyColumnsInAllGridsFlag
+        };
+
+        this.dataReceiver = new ServerDataReceiver(this.props.tableName);
+        this.datasource = new ServerSideDatasource(this.dataReceiver);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -42,38 +45,7 @@ export class DynamicAgGrid extends Component {
     onGridReady = (params) => {
         this.gridApi = params.api;
         this.columnApi = params.columnApi;
-        this.initializeGridWithData();
-    };
-
-    initializeGridWithData = () => {
-        const httpRequest = new XMLHttpRequest();
-        httpRequest.open(
-            'GET',
-            'https://raw.githubusercontent.com/ag-grid/ag-grid/master/grid-packages/ag-grid-docs/src/olympicWinners.json'
-        );
-        httpRequest.send();
-        httpRequest.onreadystatechange = () => {
-            if (httpRequest.readyState === 4 && httpRequest.status === 200) {
-                this.updateDatasource(JSON.parse(httpRequest.responseText));
-            }
-        };
-    };
-
-    initColumnsByData(data) {
-        if(data && data.length) {
-            const firstRow = data[0];
-            this.setState({columnDefs: Object.keys(firstRow).map(column => { return {headerName: column, field: column}})});
-        }
-    }
-
-    updateDatasource = (data) => {
-        this.initColumnsByData(data);
-        const datasource = new InfiniteScrollingDatasource(this.props.tableName, data);
-        this.gridApi.setDatasource(datasource);
-        this.gridApi.sizeColumnsToFit();
-        // this.columnApi.autoSizeColumns([[0, 1, 2]]);
-        // this.autoSizeAll(false);
-        this.updateEmptyColumnsList();
+        this.gridApi.setServerSideDatasource(this.datasource);
     };
 
     changeColumnVisibility(columnName, visible) {
@@ -109,34 +81,15 @@ export class DynamicAgGrid extends Component {
     changeEmptyColumnsVisibility(isVisible) {
         if(this.state.showEmptyColumnsInCurrentGridFlag !== isVisible) {
             this.setState({showEmptyColumnsInCurrentGridFlag: isVisible});
-            if (this.state.emptyColumnsList.length){
-                this.state.emptyColumnsList.forEach(column => {
+            const emptyColumnsList = this.datasource.getEmptyColumns();
+            if (emptyColumnsList.length){
+                emptyColumnsList.forEach(column => {
                     this.changeColumnVisibility(column, isVisible);
                 });
             }
+            this.gridApi.sizeColumnsToFit();
         }
     }
-
-    //TODO: Call this meghod after each data scrolling and after first grid initialization
-    updateEmptyColumnsList = () => {
-        const emptyColumnsCandidates = this.state.columnDefs.map(col => col.field);
-        // this.state.rowData.forEach(row => {
-        this.gridApi.forEachNodeAfterFilter((node, index) => {
-            if(emptyColumnsCandidates.length > 0) {
-                const row = node.data;
-                const rowFields = Object.keys(row);
-                rowFields.forEach(field => {
-                    if (row[field] || row[field] === 0) {
-                        const fieldIndex = emptyColumnsCandidates.indexOf(field);
-                        if(fieldIndex > -1) {
-                            emptyColumnsCandidates.splice(fieldIndex, 1);
-                        }
-                    }
-                })
-            }
-        });
-        this.setState({emptyColumnsList: emptyColumnsCandidates});
-    };
 
     render() {
         return (
@@ -147,7 +100,8 @@ export class DynamicAgGrid extends Component {
                 {/*TODO: It's possible to change this class for using another grid theme.*/}
                 <div className="ag-theme-balham dynamic-grid">
                     <AgGridReact
-                        columnDefs={this.state.columnDefs}
+                        frameworkComponents={{ customHeaderGroupComponent: GridTitleRenderer}}
+                        // columnDefs={this.state.columnDefs}
                         // rowData={this.state.rowData}
                         onGridReady={this.onGridReady.bind(this)}
                         rowDataChangeDetectionStrategy='IdentityCheck'
@@ -172,6 +126,7 @@ export class DynamicAgGrid extends Component {
                             // sortable: true,
                             resizable: true,
                             skipHeaderOnAutoSize: true,
+                            headerClass: 'resizable-header',
 
 
                             // make every column use 'text' filter by default
@@ -192,14 +147,14 @@ export class DynamicAgGrid extends Component {
                             // dateComponentFramework={DateComponent}
                         }}
                         floatingFilter = {true}
-                        //Infinit scrolling data source related properties
-                        datasource = {InfiniteScrollingDatasource}
-                            // tell grid we want virtual row model type
-                        rowModelType = 'infinite'
-                        pagination = {true}
-                        paginationAutoPageSize = {true}
+                        //Server side data source related properties
+                        // datasource = {this.datasource}
+                        // tell grid we want virtual row model type
+                        rowModelType = 'serverSide'
+                        pagination = {false}
+                        // paginationAutoPageSize = {true}
                         // how big each page in our page cache will be, default is 100
-                        paginationPageSize = {100}
+                        // paginationPageSize = {100}
                         // how many extra blank rows to display to the user at the end of the dataset,
                         // which sets the vertical scroll and then allows the grid to request viewing more rows of data.
                         // default is 1, ie show 1 row.

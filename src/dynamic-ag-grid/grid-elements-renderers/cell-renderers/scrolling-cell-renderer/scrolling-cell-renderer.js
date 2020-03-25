@@ -13,7 +13,7 @@ export class ScrollingCellRenderer extends Component {
         // return <div className="scrolling-cell-aa">{}</div>;
         if (this.props.value === undefined) {
             // when no node id, display the spinner image
-            return <img src={require('../../resources/loading.gif')} />;
+            return <img src={require('../../../../resources/loading.gif')} />;
         } else {
             // otherwise just display node ID (or whatever you wish for this column)
             // return <textarea className="scrolling-cell">{this.props.value}</textarea>;
