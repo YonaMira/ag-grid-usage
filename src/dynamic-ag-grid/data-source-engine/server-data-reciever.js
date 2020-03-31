@@ -1,6 +1,6 @@
 import React from 'react';
 
-let sortByKey = function(request) {
+let sortBySortModel = function(request) {
     const sortModel = request.sortModel;
     if (!sortModel || !sortModel.length) return;
 
@@ -33,6 +33,43 @@ let sortByKey = function(request) {
     });
 };
 
+let containsFilter = function(row, column, value) {
+    return row[column].toString().indexOf(value) > -1;
+};
+
+let equalsFilter = function(row, column, value) {
+    return row[column].toString() === value;
+};
+
+let filterModelTypeToFuncDic = {'contains': containsFilter, 'equals': equalsFilter};
+
+let filterByFilterModel = function(request) {
+    let filteredData = this;
+
+    const filterModel = request.filterModel;
+    if (!filterModel) {
+        return filteredData;
+    }
+    const filteredColumns = Object.keys(filterModel);
+    if (filteredColumns.length === 0) {
+        return filteredData;
+    }
+
+    const filters = filteredColumns.map(function(column) {
+        console.log("Filter model is - column: " + column +
+            ' filter type: ' + filterModel[column].type +
+            ' filter value: ' + filterModel[column].filter +
+            ' filter to: ' + filterModel[column].filterTo || '-');
+        const filterUtil = filterModelTypeToFuncDic[filterModel[column].type];
+        const filterValue = filterModel[column].filter;
+        const toValue = filterModel[column].filterTo;
+        filteredData = filteredData.filter(function (row, index, array){
+            return filterUtil(row, column, filterValue, toValue)
+        });
+    });
+    return filteredData;
+};
+
 export class ServerDataReceiver{
     constructor(tableName) {
         this.rowsCount = null;
@@ -43,8 +80,8 @@ export class ServerDataReceiver{
             'GET',
             'https://raw.githubusercontent.com/ag-grid/ag-grid/master/grid-packages/ag-grid-docs/src/olympicWinners.json'
         );
-
-        Array.prototype.sortByKey = sortByKey;
+        Array.prototype.sortBySortModel = sortBySortModel;
+        Array.prototype.filterByFilterModel = filterByFilterModel;
     }
 
     initializeFakeData = () => {
@@ -83,8 +120,8 @@ export class ServerDataReceiver{
         request = request.request;
         let rowsForBlock = this.allData.slice(request.startRow, request.endRow);
         // this.printSortModel(request);
-        rowsForBlock.sortByKey(request);
-        this.printFilterModel(request);
+        rowsForBlock.sortBySortModel(request);
+        rowsForBlock = rowsForBlock.filterByFilterModel(request);
 
         const lastRow = this.getLastRowIndex(request, rowsForBlock);
         return {
@@ -117,30 +154,30 @@ export class ServerDataReceiver{
         return rowsForBlock;
     }
 
-    printSortModel(request){
-        const sortModel = request.sortModel;
-        if (!sortModel || !sortModel.length) return;
+    // printSortModel(request){
+    //     const sortModel = request.sortModel;
+    //     if (!sortModel || !sortModel.length) return;
+    //
+    //     const sorts = sortModel.map(function(s) {
+    //         console.log("Sort model is - column: " + s.colId + ' sort: ' + s.sort);
+    //     });
+    // }
 
-        const sorts = sortModel.map(function(s) {
-            console.log("Sort model is - column: " + s.colId + ' sort: ' + s.sort);
-        });
-    }
-
-    printFilterModel(request){
-        const filterModel = request.filterModel;
-        if (!filterModel) {
-            return;
-        }
-        const filteredColumns = Object.keys(filterModel);
-        if (filteredColumns.length === 0) return;
-
-        const filters = filteredColumns.map(function(column) {
-            console.log("Filter model is - column: " + column +
-                ' filter type: ' + filterModel[column].type +
-                ' filter value: ' + filterModel[column].filter +
-                ' filter to: ' + filterModel[column].filterTo || '-');
-        });
-    }
+    // printFilterModel(request){
+    //     const filterModel = request.filterModel;
+    //     if (!filterModel) {
+    //         return;
+    //     }
+    //     const filteredColumns = Object.keys(filterModel);
+    //     if (filteredColumns.length === 0) return;
+    //
+    //     const filters = filteredColumns.map(function(column) {
+    //         console.log("Filter model is - column: " + column +
+    //             ' filter type: ' + filterModel[column].type +
+    //             ' filter value: ' + filterModel[column].filter +
+    //             ' filter to: ' + filterModel[column].filterTo || '-');
+    //     });
+    // }
 
     //Elastic sort request:
     //POST /_search
