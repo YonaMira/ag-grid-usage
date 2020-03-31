@@ -130,6 +130,7 @@ export class DynamicAgGrid extends Component {
 
 
                             // make every column use 'text' filter by default
+
                             filter: 'agTextColumnFilter',
                             cellEditor: 'agLargeTextCellEditor',
                             // cellEditorParams: {
@@ -146,7 +147,7 @@ export class DynamicAgGrid extends Component {
                             // setting grid wide date component
                             // dateComponentFramework={DateComponent}
                         }}
-                        floatingFilter = {true}
+                        // floatingFilter = {true}
                         //Server side data source related properties
                         // datasource = {this.datasource}
                         // tell grid we want virtual row model type
@@ -169,26 +170,26 @@ export class DynamicAgGrid extends Component {
                         // pages are never purged. this should be set for large data to stop your browser from getting
                         // full of data
                         maxBlocksInCache = {10}
-                        enableServerSideFilter = {false}
-                        enableServerSideSorting = {false}
+                        enableServerSideFilter = {true}
+                        enableServerSideSorting = {true}
 
                         // define specific column types
-                        columnTypes = {
-                            {
-                                numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
-                                medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
-                                nonEditableColumn: {editable: false},
-                                dateColumn: {
-                                    // specify we want to use the date filter
-                                    filter: 'agDateColumnFilter',
-                                    // add extra parameters for the date filter
-                                    filterParams: {
-                                        // provide comparator function
-                                        comparator:compareDates.bind(this)
-                                    }
-                                }
-                            }
-                        }
+                        // columnTypes = {
+                        //     {
+                        //         numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
+                        //         medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
+                        //         nonEditableColumn: {editable: false},
+                        //         dateColumn: {
+                        //             // specify we want to use the date filter
+                        //             filter: 'agDateColumnFilter',
+                        //             // add extra parameters for the date filter
+                        //             filterParams: {
+                        //                 // provide comparator function
+                        //                 comparator:compareDates.bind(this)
+                        //             }
+                        //         }
+                        //     }
+                        // }
                         onColumnResized={this.onColumnResized.bind(this)}
                     >
                     </AgGridReact>

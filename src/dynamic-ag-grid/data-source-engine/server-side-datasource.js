@@ -1,10 +1,9 @@
-import React from 'react';
-
 export class ServerSideDatasource{
     constructor(serverDataReciever) {
         // this.rowsCount = null;
         this.serverDataReceiver = serverDataReciever;
         this.emptyColumnsList = [];
+        this.columns = null;
     }
 
     // getRowsByScrollId = (params) => {
@@ -16,7 +15,7 @@ export class ServerSideDatasource{
     initColumnsByData(data) {
         if(data && data.length) {
             const firstRow = data[0];
-            const columns = Object.keys(firstRow).map(column => { return {
+            this.columns = Object.keys(firstRow).map(column => { return {
                     headerName: column,
                     field: column
                 }
@@ -24,8 +23,8 @@ export class ServerSideDatasource{
 
             );
             //TMP: FOR TEST ONLY
-            columns.push({headerName: "emptyColumn1", field: "emptyColumn1"});
-            columns.push({headerName: "emptyColumn2", field: "emptyColumn2"});
+            this.columns.push({headerName: "emptyColumn1", field: "emptyColumn1"});
+            this.columns.push({headerName: "emptyColumn2", field: "emptyColumn2"});
             // this.setState({columnDefs:
             //     // [
             //     //     {
@@ -36,12 +35,14 @@ export class ServerSideDatasource{
             //     // }
             //     // ]
             // });
-            return columns;
         }
-        return [];
+        else {
+            this.columns = [];
+        }
+        return this.columns;
     }
 
-    //TODO: Call this meghod after each data scrolling and after first grid initialization
+    //TODO: Call this method after each data scrolling and after first grid initialization
     updateEmptyColumnsList = (allColumns, data) => {
         const emptyColumnsCandidates = allColumns.map(col => col.field);
         // this.state.rowData.forEach(row => {
@@ -74,14 +75,20 @@ export class ServerSideDatasource{
         return this.emptyColumnsList;
     }
 
+    setGridColumnDefs(gridApi, gridData) {
+        if (!this.columns) {
+            let columns = this.initColumnsByData(gridData);
+            gridApi.setColumnDefs(columns);
+        }
+    }
+
     getRows = async (request) => {
         try {
             let response = await this.serverDataReceiver.getRowsBulk(request);
             let data = response.rows;
-            let columns = this.initColumnsByData(data);
-            this.updateEmptyColumnsList(columns, data);
-            request.parentNode.gridApi.setColumnDefs(columns);
+            this.setGridColumnDefs(request.parentNode.gridApi, data);
             console.log('asking for ' + request.startRow + ' to ' + request.endRow);
+            this.updateEmptyColumnsList(this.columns, data);
             const rowsThisPage = data.slice(request.startRow, request.endRow);
             let lastRow = -1;
             if (data.length <= request.endRow) {

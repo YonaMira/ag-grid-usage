@@ -1,5 +1,38 @@
 import React from 'react';
 
+let sortByKey = function(request) {
+    const sortModel = request.sortModel;
+    if (!sortModel || !sortModel.length) return;
+
+    // const sorts = sortModel.map(function(s) {
+    //     console.log("Sort model is - column: " + s.colId + ' sort: ' + s.sort);
+    //     sortedRowsBlock = rowsForBlock.sort(this.compareValues(s.colId, s.sort));
+    // });
+    const key = sortModel[0].colId;
+    const order = sortModel[0].sort || 'asc';
+    this.sort(function(a, b) {
+        if (!a.hasOwnProperty(key) || !b.hasOwnProperty(key)) {
+            // property doesn't exist on either object
+            return 0;
+        }
+
+        const varA = (typeof a[key] === 'string')
+            ? a[key].toUpperCase() : a[key];
+        const varB = (typeof b[key] === 'string')
+            ? b[key].toUpperCase() : b[key];
+
+        let comparison = 0;
+        if (varA > varB) {
+            comparison = 1;
+        } else if (varA < varB) {
+            comparison = -1;
+        }
+        return (
+            (order === 'desc') ? (comparison * -1) : comparison
+        );
+    });
+};
+
 export class ServerDataReceiver{
     constructor(tableName) {
         this.rowsCount = null;
@@ -10,6 +43,8 @@ export class ServerDataReceiver{
             'GET',
             'https://raw.githubusercontent.com/ag-grid/ag-grid/master/grid-packages/ag-grid-docs/src/olympicWinners.json'
         );
+
+        Array.prototype.sortByKey = sortByKey;
     }
 
     initializeFakeData = () => {
@@ -42,12 +77,79 @@ export class ServerDataReceiver{
         if(!this.allData) {
             this.allData = await this.initializeFakeData();
         }
+        if(!request.request) {
+            return;
+        }
+        request = request.request;
         let rowsForBlock = this.allData.slice(request.startRow, request.endRow);
-        const lastRow = this.allData.length;
+        // this.printSortModel(request);
+        rowsForBlock.sortByKey(request);
+        this.printFilterModel(request);
+
+        const lastRow = this.getLastRowIndex(request, rowsForBlock);
         return {
             success: true,
             rows: rowsForBlock,
-            lastRow: lastRow,
+            lastRow: lastRow
         };
     };
+
+    getLastRowIndex(request, results) {
+        if (!results || results.length === 0) return -1;
+        let currentLastRow = request.startRow + results.length;
+        return currentLastRow <= request.endRow ? currentLastRow : -1;
+    }
+
+    filterData(request, rowsForBlock) {
+        const filterModel = request.filterModel;
+        if (!filterModel) {
+            return rowsForBlock;
+        }
+        const filteredColumns = Object.keys(filterModel);
+        if (filteredColumns.length === 0) return rowsForBlock;
+
+        const filters = filteredColumns.map(function(column) {
+            console.log("Filter model is - column: " + column +
+                ' filter type: ' + filterModel[column].type +
+                ' filter value: ' + filterModel[column].filter +
+                ' filter to: ' + filterModel[column].filterTo || '-');
+        });
+        return rowsForBlock;
+    }
+
+    printSortModel(request){
+        const sortModel = request.sortModel;
+        if (!sortModel || !sortModel.length) return;
+
+        const sorts = sortModel.map(function(s) {
+            console.log("Sort model is - column: " + s.colId + ' sort: ' + s.sort);
+        });
+    }
+
+    printFilterModel(request){
+        const filterModel = request.filterModel;
+        if (!filterModel) {
+            return;
+        }
+        const filteredColumns = Object.keys(filterModel);
+        if (filteredColumns.length === 0) return;
+
+        const filters = filteredColumns.map(function(column) {
+            console.log("Filter model is - column: " + column +
+                ' filter type: ' + filterModel[column].type +
+                ' filter value: ' + filterModel[column].filter +
+                ' filter to: ' + filterModel[column].filterTo || '-');
+        });
+    }
+
+    //Elastic sort request:
+    //POST /_search
+    // {
+    //     "query" : {
+    //         "term" : { "product" : "chocolate" }
+    //     },
+    //     "sort" : [
+    //         {"price" : {"order" : "asc", "mode" : "avg"}}
+    //     ]
+    // }
 }
