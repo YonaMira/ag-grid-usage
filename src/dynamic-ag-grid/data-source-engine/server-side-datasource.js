@@ -1,9 +1,113 @@
+import {GridRequestMode} from './grid-request-mode';
+
+let sortBySortModel = function(request) {
+    const sortModel = request.sortModel;
+    if (!sortModel || !sortModel.length) return;
+
+    // const sorts = sortModel.map(function(s) {
+    //     console.log("Sort model is - column: " + s.colId + ' sort: ' + s.sort);
+    //     sortedRowsBlock = rowsForBlock.sort(this.compareValues(s.colId, s.sort));
+    // });
+    const key = sortModel[0].colId;
+    const order = sortModel[0].sort || 'asc';
+    this.sort(function(a, b) {
+        if (!a.hasOwnProperty(key) || !b.hasOwnProperty(key)) {
+            // property doesn't exist on either object
+            return 0;
+        }
+
+        const varA = (typeof a[key] === 'string')
+            ? a[key].toUpperCase() : a[key];
+        const varB = (typeof b[key] === 'string')
+            ? b[key].toUpperCase() : b[key];
+
+        let comparison = 0;
+        if (varA > varB) {
+            comparison = 1;
+        } else if (varA < varB) {
+            comparison = -1;
+        }
+        return (
+            (order === 'desc') ? (comparison * -1) : comparison
+        );
+    });
+};
+
+let containsFilter = function(row, column, value) {
+    return row[column].toString().indexOf(value) > -1;
+};
+
+let equalsFilter = function(row, column, value) {
+    return row[column].toString() === value;
+};
+
+let filterModelTypeToFuncDic = {'contains': containsFilter, 'equals': equalsFilter};
+
+let filterByFilterModel = function(request) {
+    let filteredData = this;
+
+    const filterModel = request.filterModel;
+    if (!filterModel) {
+        return filteredData;
+    }
+    const filteredColumns = Object.keys(filterModel);
+    if (filteredColumns.length === 0) {
+        return filteredData;
+    }
+
+    const filters = filteredColumns.map(function(column) {
+        console.log("Filter model is - column: " + column +
+            ' filter type: ' + filterModel[column].type +
+            ' filter value: ' + filterModel[column].filter +
+            ' filter to: ' + filterModel[column].filterTo || '-');
+        const filterUtil = filterModelTypeToFuncDic[filterModel[column].type];
+        const filterValue = filterModel[column].filter;
+        const toValue = filterModel[column].filterTo;
+        filteredData = filteredData.filter(function (row, index, array){
+            return filterUtil(row, column, filterValue, toValue)
+        });
+    });
+    return filteredData;
+};
+
 export class ServerSideDatasource{
     constructor(serverDataReciever) {
         // this.rowsCount = null;
         this.serverDataReceiver = serverDataReciever;
         this.emptyColumnsList = [];
         this.columns = null;
+        this.requestMode = GridRequestMode.GET_ROWS;
+        this.lastBulk = undefined;
+        this.lastRow = undefined;
+        
+        Array.prototype.sortBySortModel = sortBySortModel;
+        Array.prototype.filterByFilterModel = filterByFilterModel;
+    }
+
+    setRequestMode(mode){
+        this.requestMode = mode;
+    }
+
+    notifyError(params, error) {
+        params.failCallback();
+        params.parentNode.gridApi.dispatchEvent({
+            type: 'failCallback',
+            api: params.parentNode.gridApi,
+            columnApi: params.parentNode.columnApi,
+            error: error
+        });
+    }
+
+    notifySuccess(originalRequest, resultRows) {
+        originalRequest.successCallback(resultRows, this.lastRow);
+        originalRequest.parentNode.gridApi.dispatchEvent({
+            type: 'successCallback',
+            originalRequest: originalRequest,
+            resultRows: resultRows, 
+            lastRow: this.lastRow
+            // requestMode: this.requestMode
+        });
+        // this.requestMode = GridRequestMode.GET_ROWS;
     }
 
     // getRowsByScrollId = (params) => {
@@ -87,18 +191,33 @@ export class ServerSideDatasource{
             let response = await this.serverDataReceiver.getRowsBulk(request);
             let data = response.rows;
             this.setGridColumnDefs(request.parentNode.gridApi, data);
-            console.log('asking for ' + request.startRow + ' to ' + request.endRow);
+            console.log('getRows in GET_ROWS mode is asking for ' + request.request.startRow + ' to ' + request.request.endRow);
             this.updateEmptyColumnsList(this.columns, data);
-            const rowsThisPage = data.slice(request.startRow, request.endRow);
-            let lastRow = -1;
-            if (data.length <= request.endRow) {
-                lastRow = response.lastRow;
+            if(!this.lastRow && (!data || !data.length)) {
+                this.lastRow = 0;
             }
-            request.successCallback(rowsThisPage, lastRow);
-            request.parentNode.gridApi.sizeColumnsToFit();
+            else {
+                this.lastRow = response.lastRow;
+            }
+            this.lastBulk = data;
+            // const filteredAndSortedRows = this.filterAndSortResults(request);
+            this.notifySuccess(request, data);
+            return data;
         }
         catch (error) {
             console.error('Failed to get rows. Error: ' + JSON.stringify(error));
+            this.notifyError(request, error);
+            return [];
         }
     };
+
+    filterAndSortResults(request){
+        if(this.lastBulk && this.lastBulk.length) {
+            this.lastBulk.sortBySortModel(request);
+            return this.lastBulk.filterByFilterModel(request);
+        }
+        else {
+            return [];
+        }
+    }
 }

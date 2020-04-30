@@ -20,14 +20,28 @@ import {agNoRowsOverlayOverride} from './overriden-ag-components/agNoRowsOverlay
 import {agColumnHeaderOverride} from './overriden-ag-components/agColumnHeaderComponent';
 import './dynamic-ag-grid.css';
 import {ServerDataReceiver} from "./data-source-engine/server-data-reciever";
+import {GridRequestMode} from "./data-source-engine/grid-request-mode";
+
+const GridRowModel = {
+    ClientSide: 'clientSide',
+    ServerSide: 'serverSide'
+}
 
 export class DynamicAgGrid extends Component {
     constructor(props) {
         super(props);
         this.state = {
             showEmptyColumnsInCurrentGridFlag: props.showEmptyColumnsInAllGridsFlag,
-            showEmptyColumnsInAllGridsFlag: props.showEmptyColumnsInAllGridsFlag
+            showEmptyColumnsInAllGridsFlag: props.showEmptyColumnsInAllGridsFlag,
+            rowModel: GridRowModel.ClientSide
         };
+
+        this.rowHeight = 100;
+        this.bulkSize = 10;
+        this.lastBulkIndex = -1;
+        this.rows = [];
+
+        this.inBulkLoading = false;
 
         this.dataReceiver = new ServerDataReceiver(this.props.tableName);
         this.datasource = new ServerSideDatasource(this.dataReceiver);
@@ -42,11 +56,62 @@ export class DynamicAgGrid extends Component {
         }
     }
 
-    onGridReady = (params) => {
+    // create handler function
+    myRowClickedHandler(event) {
+        alert('The row was clicked');
+    }
+
+    onGridReady = async (params) => {
         this.gridApi = params.api;
         this.columnApi = params.columnApi;
-        this.gridApi.setServerSideDatasource(this.datasource);
+        this.registerGridEvents();
+        if(this.state.rowModel === GridRowModel.ClientSide) {
+            this.initClientSideRowModel();
+        }
+        else {
+            this.initServerSideRowModel();
+        }
     };
+
+    initServerSideRowModel() {
+        this.registerServerSideRowModelEvents();
+        this.gridApi.setServerSideDatasource(this.datasource);
+    }
+
+    initClientSideRowModel = async() => {
+        this.registerClientSideRowModelEvents();
+
+        // let request = {parentNode: {gridApi: this.gridApi}, 
+        //             failCallback: () => {}, 
+        //             successCallback: (params) => {}, 
+        //             request: {startRow: 0, endRow: 100}};
+        // const rows = await this.datasource.getRows(request); 
+        // // this.rowData = this.rowData.concat(rows);
+        // //TODO: sort and filter according to appropriate models
+        // this.gridApi.setRowData(rows);  
+        
+        this.getNextRowsBulk();    
+    }
+
+    getNextRowsBulk = async() => {
+        //TODO: compare this.rowData.length with table.total and unregister to bodyScroll event 
+        //Anyway don't enter this method if all data already loaded to grid.
+        this.lastBulkIndex = this.lastBulkIndex + 1;
+        const startRow = this.lastBulkIndex * this.bulkSize;
+        let request = {parentNode: {gridApi: this.gridApi}, 
+                    failCallback: () => {}, 
+                    successCallback: (params) => {}, 
+                    request: {startRow: startRow, endRow: startRow + this.bulkSize}};
+        const rows = await this.datasource.getRows(request); 
+        this.rows = this.rows.concat(rows);
+        //TODO: sort and filter according to appropriate models
+        this.gridApi.setRowData(this.rows); 
+        return rows; 
+    }
+
+    unregisterGridEvents = () => {
+
+    }
 
     changeColumnVisibility(columnName, visible) {
         // this.api.selectAll();
@@ -71,7 +136,7 @@ export class DynamicAgGrid extends Component {
     }
 
     getRowHeight(params) {
-        return 100;//params.data.rowHeight;
+        return this.rowHeight;//params.data.rowHeight;
     }
 
     switchEmptyColumnsVisibility = () => {
@@ -106,8 +171,8 @@ export class DynamicAgGrid extends Component {
                         onGridReady={this.onGridReady.bind(this)}
                         rowDataChangeDetectionStrategy='IdentityCheck'
                         enableColResize={true}
-                        enableSorting={true}
-                        enableFilter={true}
+                        enableSorting={this.state.rowModel === GridRowModel.ClientSide}
+                        enableFilter={this.state.rowModel === GridRowModel.ClientSide}
                         enableRangeSelection={true}
                         suppressRowClickSelection={true}
                         animateRows={true}
@@ -115,7 +180,7 @@ export class DynamicAgGrid extends Component {
                         debug={true}
                         autoSizeColumns={true}
                         // rowHeight={100}
-                        getRowHeight={this.getRowHeight}
+                        getRowHeight={this.getRowHeight.bind(this)}
                         // default ColDef, gets applied to every column
                         defaultColDef= {{
                             cellClass: "cell-wrap",
@@ -147,11 +212,15 @@ export class DynamicAgGrid extends Component {
                             // setting grid wide date component
                             // dateComponentFramework={DateComponent}
                         }}
+                        suppressMenuHide={true}
+
+                        // postSort= {this.onPostSort.bind(this)} // Doesn't work
+                        
                         // floatingFilter = {true}
                         //Server side data source related properties
                         // datasource = {this.datasource}
                         // tell grid we want virtual row model type
-                        rowModelType = 'serverSide'
+                        rowModelType = {this.state.rowModel}
                         pagination = {false}
                         // paginationAutoPageSize = {true}
                         // how big each page in our page cache will be, default is 100
@@ -165,36 +234,115 @@ export class DynamicAgGrid extends Component {
                         maxConcurrentDatasourceRequests = {1}
                         // how many rows to initially show in the grid. having 1 shows a blank row, so it looks like
                         // the grid is loading from the users perspective (as we have a spinner in the first col)
-                        infiniteInitialRowCount = {1000}
+                        // infiniteInitialRowCount = {1000}
                         // how many pages to store in cache. default is undefined, which allows an infinite sized cache,
                         // pages are never purged. this should be set for large data to stop your browser from getting
                         // full of data
-                        maxBlocksInCache = {10}
-                        enableServerSideFilter = {true}
-                        enableServerSideSorting = {true}
-
-                        // define specific column types
-                        // columnTypes = {
-                        //     {
-                        //         numberColumn: {width: 83, filter: 'agNumberColumnFilter'},
-                        //         medalColumn: {width: 100, columnGroupShow: 'open', filter: false},
-                        //         nonEditableColumn: {editable: false},
-                        //         dateColumn: {
-                        //             // specify we want to use the date filter
-                        //             filter: 'agDateColumnFilter',
-                        //             // add extra parameters for the date filter
-                        //             filterParams: {
-                        //                 // provide comparator function
-                        //                 comparator:compareDates.bind(this)
-                        //             }
-                        //         }
-                        //     }
-                        // }
-                        onColumnResized={this.onColumnResized.bind(this)}
+                        maxBlocksInCache = {1}
+                        cacheBlockSize = {this.bulkSize}
+                        // enableServerSideFilter = {false}
+                        // enableServerSideSorting = {false}
                     >
                     </AgGridReact>
                 </div>
             </div>
         );
+    }
+
+    registerGridEvents = () => {
+        // this.gridApi.addEventListener('rowClicked', this.myRowClickedHandler);        
+        this.gridApi.addEventListener('firstDataRendered', this.onFirstDataRendered);
+        // this.gridApi.addEventListener('modelUpdated', this.onModelUpdated);
+        // this.gridApi.addEventListener('componentStateChanged', this.onComponentStateChanged);
+        // this.gridApi.addEventListener('postSort', this.onPostSort); // Doesn't work
+    }
+
+    registerClientSideRowModelEvents = () => {
+        this.gridApi.addEventListener('bodyScroll', this.onGridBodyScrollCallback);
+    }
+
+    registerServerSideRowModelEvents = () => {
+        // this.gridApi.addEventListener('sortChanged', this.onSortChanged);
+        // this.gridApi.addEventListener('filterChanged', this.onFilterChanged);
+        this.gridApi.addEventListener('failCallback', this.onGetRowsFailedCallback);
+        this.gridApi.addEventListener('successCallback', this.onGetRowsSucceededCallback);
+    }
+
+    //This event handler is relevant for ClientSide row model only in our implementation.
+    //We implement dynamic data loading by this event handling.
+    onGridBodyScrollCallback = async params => {
+        this.gridApi.removeEventListener('bodyScroll', this.onGridBodyScrollCallback);
+        if(params.direction === "vertical") {
+            const lastDisplayedNodeIndex = this.gridApi.getLastDisplayedRow();
+            console.log("Last displayed node is: " + lastDisplayedNodeIndex);
+            if(this.rows.length === lastDisplayedNodeIndex + 1) {
+                
+                const rowsBulk = await this.getNextRowsBulk();
+
+                if(rowsBulk && rowsBulk.length > 0) {
+                    this.gridApi.ensureIndexVisible(lastDisplayedNodeIndex + 1, 'top');
+                }           
+            }
+        }
+        this.gridApi.addEventListener('bodyScroll', this.onGridBodyScrollCallback);
+    }
+
+    onGetRowsFailedCallback = params => {
+        this.gridApi.hideOverlay();
+        console.error('onGetRowsFailedCallback', params); 
+        alert("Failed to getRows");
+        //Show user notification about error here.
+    }
+
+    onGetRowsSucceededCallback = params => {
+        if(params.lastRow === 0) {
+            //The infinite and Server side row models do not use overlays like the Client-side Row Model.
+            //It does not use 'loading' overlay as rows load in blocks as it would be wrong to hide all 
+            //the grid because some rows are getting loaded. The grid does not use 'no rows' overlay 
+            //as the 'no rows' could be because you have a filter set, and a grid with a filter 
+            //shows an empty grid when no rows pass the filter.
+            this.gridApi.showNoRowsOverlay(); 
+        }
+    }
+
+    updateDataBySortAndFilterModel(request) {
+        // request.parentNode.gridApi.forEachNode
+        alert("updateDataBySortAndFilterModel");
+        request.parentNode.gridApi.purgeServerSideCache();
+    }
+
+    onSortChanged = (params) => {
+        alert("On sort changed called");
+        this.datasource.setRequestMode(GridRequestMode.SORTING);
+    }
+
+    onPostSort = (params) => {
+        alert("onPostSort called");
+    }
+
+    onFilterChanged = (params) => {
+        alert("On filter changed called");
+        this.datasource.setRequestMode(GridRequestMode.FILTERING);
+    }
+
+    onFirstDataRendered = (params) => {
+        // alert("onFirstDataRendered");
+        // if(this.rowModel === GridRowModel.ServerSide && 
+        //     (!params.resultRows || !params.resultRows.length)) {
+        //     //The infinite and Server side row models do not use overlays like the Client-side Row Model.
+        //     //It does not use 'loading' overlay as rows load in blocks as it would be wrong to hide all 
+        //     //the grid because some rows are getting loaded. The grid does not use 'no rows' overlay 
+        //     //as the 'no rows' could be because you have a filter set, and a grid with a filter 
+        //     //shows an empty grid when no rows pass the filter.
+        //     this.gridApi.showNoRowsOverlay(); 
+        // }
+    }
+
+    onModelUpdated = (params) => {
+        alert("onModelUpdated called");
+    }
+
+    onComponentStateChanged = (params) => {
+        alert("onComponentStateChanged called");
     }
 }

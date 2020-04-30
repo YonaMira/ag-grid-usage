@@ -6,8 +6,13 @@ headerHeight and
 minColWidth.
 
 
+This server is started on port 3000.
+localhost:3000
 
 GIT COMMANDS
 git commit -a -m "Commit_message"
 git status
 git push origin master
+git stash - make stash
+git stash list - list your stash
+git stash apply - reply stash

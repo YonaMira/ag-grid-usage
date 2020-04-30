@@ -20,10 +20,10 @@ export class App extends Component {
             showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
             tableName={'Test1'}
           />
-          <DynamicAgGrid
+          {/* <DynamicAgGrid
               showEmptyColumnsInAllGridsFlag={this.state.emptyColumnsVisible}
               tableName={'Test2'}
-          />
+          /> */}
         </div>
     );
   }
